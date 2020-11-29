@@ -1,9 +1,7 @@
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
-//#include <move_base_msgs/MoveBaseActionResult.h>
 #include <actionlib_msgs/GoalStatusArray.h>
 #include <geometry_msgs/PoseStamped.h>
-//#include <vector>
 
 class markerAction
 {
@@ -11,7 +9,7 @@ class markerAction
        markerAction(ros::NodeHandle n)
        {
           sub1 = n.subscribe("/move_base/status", 1, &markerAction::goal_status_callback, this);
-          //sub2 = n.subscribe("/move_base/current_goal", 1, &markerAction::current_goal_callback, this);
+          sub2 = n.subscribe("/move_base/current_goal", 1, &markerAction::current_goal_callback, this);
        }
        ~markerAction() {};
        void goal_status_callback(const actionlib_msgs::GoalStatusArray& status);
@@ -22,25 +20,22 @@ class markerAction
        uint8_t getAction() { return action_;}
        void setAction(uint8_t action) { action_ = action;}
        ros::Subscriber sub1;
-      //ros::Subscriber sub2;
+       ros::Subscriber sub2;
+       geometry_msgs::Pose current_goal_;
 
    private:
       uint8_t goalStatus_ = actionlib_msgs::GoalStatus::PENDING;
-      //geometry_msgs::Pose current_goal;
       uint8_t action_ = visualization_msgs::Marker::ADD;
  };
 
 
-void markerAction::current_goal_callback(const geometry_msgs::PoseStamped& pose)
+void markerAction::current_goal_callback(const geometry_msgs::PoseStamped& poseStamped)
 {
+  current_goal_ = poseStamped.pose;
 }
 
 void markerAction::goal_status_callback(const actionlib_msgs::GoalStatusArray& status)
 {
-  //actionlib_msgs::GoalStatus *statusList = status.status_list;
-  //ROS_INFO("%d", status.status_list[0].status);
-  //std::vector<actionlib_msgs::GoalStatus> statusList = status.status_list;
-
   if (!status.status_list.empty())
   {
     goalStatus_ = status.status_list[0].status;
@@ -62,11 +57,7 @@ int main( int argc, char** argv )
 
   markerAction A(n);
 
-  //ros::Subscriber sub = n.subscribe("/move_base/status", 10, goal_status_callback);
-  //ros::spin();
-  //ROS_INFO("Number of publishers to %d", (int)sub.getNumPublishers());
-
-  // // Set our initial shape type to be a cube
+  // Set our initial shape type to be a cube
   uint32_t shape = visualization_msgs::Marker::CUBE;
   uint8_t prev_goalStatus = actionlib_msgs::GoalStatus::PENDING;
   int success_count = 0;
@@ -77,36 +68,23 @@ int main( int argc, char** argv )
       A.setGoalStatus(actionlib_msgs::GoalStatus::PENDING);
     }
 
-    ROS_INFO("prev goal status %d",prev_goalStatus);
-    ROS_INFO("goal status %d",A.goalStatus());
-    ROS_INFO("success count %d",success_count);
-
     if (success_count == 1)
     {
       A.setAction(visualization_msgs::Marker::DELETE);
-      ROS_INFO("Marker deleted");
     }
     else if (success_count == 2)
     {
       A.setAction(visualization_msgs::Marker::ADD);
-      ROS_INFO("Marker added");    
     }
     else
     {
       A.setAction(visualization_msgs::Marker::ADD); 
-      ROS_INFO("Marker added");          
     }
 
     if (A.goalStatus() == actionlib_msgs::GoalStatus::SUCCEEDED && prev_goalStatus != actionlib_msgs::GoalStatus::SUCCEEDED)
     {
       success_count += 1;
     }
-
-    // if (A.goalStatus() != actionlib_msgs::GoalStatus::SUCCEEDED && prev_goalStatus == actionlib_msgs::GoalStatus::SUCCEEDED)
-    // {
-    //   ROS_INFO("Marker deleted");
-    //   success_count += 1;
-    // }
 
     visualization_msgs::Marker marker;
     // Set the frame ID and timestamp.  See the TF tutorials for information on these.
@@ -126,18 +104,18 @@ int main( int argc, char** argv )
     marker.action = A.getAction();
 
     // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
-    marker.pose.position.x = 1;
-    marker.pose.position.y = 0;
-    marker.pose.position.z = 0;
-    marker.pose.orientation.x = 0.0;
-    marker.pose.orientation.y = 0.0;
-    marker.pose.orientation.z = 0.0;
-    marker.pose.orientation.w = 1.0;
+    marker.pose.position.x = A.current_goal_.position.x;
+    marker.pose.position.y = A.current_goal_.position.y;
+    marker.pose.position.z = A.current_goal_.position.z;
+    marker.pose.orientation.x = A.current_goal_.orientation.x;
+    marker.pose.orientation.y = A.current_goal_.orientation.x;
+    marker.pose.orientation.z = A.current_goal_.orientation.x;
+    marker.pose.orientation.w = A.current_goal_.orientation.w;
 
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
-    marker.scale.x = 1.0;
-    marker.scale.y = 1.0;
-    marker.scale.z = 1.0;
+    marker.scale.x = 0.5;
+    marker.scale.y = 0.5;
+    marker.scale.z = 0.5;
 
     // Set the color -- be sure to set alpha to something non-zero!
     marker.color.r = 0.0f;
