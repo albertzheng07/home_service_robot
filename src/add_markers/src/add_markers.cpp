@@ -3,14 +3,15 @@
 //#include <move_base_msgs/MoveBaseActionResult.h>
 #include <actionlib_msgs/GoalStatusArray.h>
 #include <geometry_msgs/PoseStamped.h>
+//#include <vector>
 
 class markerAction
 {
    public:
        markerAction(ros::NodeHandle n)
        {
-          sub1 = n.subscribe("/move_base/status", 10, &markerAction::goal_status_callback, this);
-          sub2 = n.subscribe("/move_base/current_goal", 10, &markerAction::current_goal_callback, this);
+          sub1 = n.subscribe("/move_base/status", 1, &markerAction::goal_status_callback, this);
+          //sub2 = n.subscribe("/move_base/current_goal", 1, &markerAction::current_goal_callback, this);
        }
        ~markerAction() {};
        void goal_status_callback(const actionlib_msgs::GoalStatusArray& status);
@@ -20,12 +21,12 @@ class markerAction
        void setGoalStatus(uint8_t status) { goalStatus_ = status;}
        uint8_t getAction() { return action_;}
        void setAction(uint8_t action) { action_ = action;}
-      ros::Subscriber sub1;
-      ros::Subscriber sub2;
+       ros::Subscriber sub1;
+      //ros::Subscriber sub2;
 
    private:
       uint8_t goalStatus_ = actionlib_msgs::GoalStatus::PENDING;
-      geometry_msgs::Pose current_goal;
+      //geometry_msgs::Pose current_goal;
       uint8_t action_ = visualization_msgs::Marker::ADD;
  };
 
@@ -38,7 +39,17 @@ void markerAction::goal_status_callback(const actionlib_msgs::GoalStatusArray& s
 {
   //actionlib_msgs::GoalStatus *statusList = status.status_list;
   //ROS_INFO("%d", status.status_list[0].status);
-  goalStatus_ = status.status_list[0].status;
+  //std::vector<actionlib_msgs::GoalStatus> statusList = status.status_list;
+
+  if (!status.status_list.empty())
+  {
+    goalStatus_ = status.status_list[0].status;
+  }
+  else
+  {
+    goalStatus_ = actionlib_msgs::GoalStatus::PENDING;
+  }
+  
 }
 
 
@@ -57,7 +68,7 @@ int main( int argc, char** argv )
 
   // // Set our initial shape type to be a cube
   uint32_t shape = visualization_msgs::Marker::CUBE;
-  bool prev_goalStatus = actionlib_msgs::GoalStatus::PENDING;
+  uint8_t prev_goalStatus = actionlib_msgs::GoalStatus::PENDING;
   int success_count = 0;
   while (ros::ok())
   {
@@ -65,18 +76,25 @@ int main( int argc, char** argv )
     {
       A.setGoalStatus(actionlib_msgs::GoalStatus::PENDING);
     }
-    
+
+    ROS_INFO("prev goal status %d",prev_goalStatus);
+    ROS_INFO("goal status %d",A.goalStatus());
+    ROS_INFO("success count %d",success_count);
+
     if (success_count == 1)
     {
       A.setAction(visualization_msgs::Marker::DELETE);
+      ROS_INFO("Marker deleted");
     }
     else if (success_count == 2)
     {
-      A.setAction(visualization_msgs::Marker::ADD);    
+      A.setAction(visualization_msgs::Marker::ADD);
+      ROS_INFO("Marker added");    
     }
     else
     {
-      A.setAction(visualization_msgs::Marker::ADD);       
+      A.setAction(visualization_msgs::Marker::ADD); 
+      ROS_INFO("Marker added");          
     }
 
     if (A.goalStatus() == actionlib_msgs::GoalStatus::SUCCEEDED && prev_goalStatus != actionlib_msgs::GoalStatus::SUCCEEDED)
@@ -96,7 +114,6 @@ int main( int argc, char** argv )
     marker.header.stamp = ros::Time::now();
 
     //ROS_INFO("test");
-    ROS_INFO("%d",(int)A.goalStatus());
     // Set the namespace and id for this marker.  This serves to create a unique ID
     // Any marker sent with the same namespace and id will overwrite the old one
     marker.ns = "add_markers";
