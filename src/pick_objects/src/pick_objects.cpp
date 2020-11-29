@@ -41,17 +41,22 @@ int main(int argc, char** argv){
 
     // Check if the robot reached its goal
     if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-      ROS_INFO("Hooray, the base moved 1 meter forward to the first goal");
+      ROS_INFO("Hooray, the robot moved to the goal");
     else
-      ROS_INFO("The base failed to move forward 1 meter for some reason");
+      ROS_INFO("The base failed to move to the goal some reason");
 
     ros::Time begin = ros::Time::now();
 
     ros::Time future = begin + ros::Duration(5.0);
 
+    bool print_time = true;
     while(ros::Time::now() < future && i == 0)
-    {
-       ROS_INFO("Pause 5 seconds after reaching first pick up zone");
+    {  
+       if (print_time)
+       {
+       	 ROS_INFO("Pause 5 seconds after reaching first pick up zone");
+         print_time = false;
+       }
     }
   }
 
